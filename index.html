@@ -1,0 +1,1162 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Örümcek Sensör Paneli</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+    
+    body {
+      background: #f0f2f5;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    
+    .login-container {
+      background: white;
+      padding: 30px;
+      border-radius: 8px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+      width: 300px;
+      margin: auto;
+      text-align: center;
+    }
+    
+    .login-container input,
+    .login-container button {
+      width: 100%;
+      padding: 10px;
+      margin: 10px 0;
+      border-radius: 5px;
+      border: 1px solid #ccc;
+    }
+    
+    .login-container button {
+      background: #4CAF50;
+      color: white;
+      cursor: pointer;
+      border: none;
+      transition: background 0.3s;
+    }
+    
+    .login-container button:hover {
+      background: #45a049;
+    }
+    
+    .content-container {
+      display: none;
+      flex: 1;
+      padding: 20px;
+    }
+    
+    .status-bar {
+      background: #2c3e50;
+      color: white;
+      padding: 15px;
+      border-radius: 5px;
+      margin-bottom: 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 14px;
+      flex-wrap: wrap;
+      gap: 15px;
+    }
+    
+    .status-group {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+    }
+    
+    .status-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    
+    .status-item:hover {
+      transform: translateY(-2px);
+    }
+    
+    .status-icon {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: #7f8c8d;
+    }
+    
+    .status-connected {
+      background: #2ecc71;
+    }
+    
+    .status-disconnected {
+      background: #e74c3c;
+    }
+    
+    .battery-status {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 5px 10px;
+      background: rgba(255,255,255,0.1);
+      border-radius: 20px;
+      cursor: pointer;
+    }
+    
+    .battery-icon {
+      width: 25px;
+      height: 12px;
+      border: 2px solid white;
+      border-radius: 3px;
+      position: relative;
+      padding: 1px;
+    }
+    
+    .battery-icon::after {
+      content: '';
+      position: absolute;
+      right: -5px;
+      top: 3px;
+      width: 2px;
+      height: 5px;
+      background: white;
+      border-radius: 0 2px 2px 0;
+    }
+    
+    .battery-level-icon {
+      height: 100%;
+      background: white;
+      border-radius: 1px;
+      transition: width 0.5s;
+    }
+    
+    .status-value {
+      font-weight: bold;
+      font-size: 14px;
+      min-width: 60px;
+      text-align: center;
+    }
+    
+    .dashboard {
+      display: flex;
+      height: calc(100% - 70px);
+      gap: 20px;
+    }
+    
+    .video-container {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+    
+    .video-container video {
+      width: 100%;
+      flex: 1;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      background: #000;
+      object-fit: cover;
+    }
+    
+    .sensor-container {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      overflow-y: auto;
+    }
+    
+    .sensor {
+      background: white;
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      transition: transform 0.3s;
+    }
+    
+    .sensor:hover {
+      transform: translateY(-3px);
+    }
+    
+    .sensor-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 15px;
+    }
+    
+    .sensor-title {
+      font-size: 20px;
+      font-weight: bold;
+      color: #333;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    
+    .sensor-value {
+      font-size: 24px;
+      font-weight: bold;
+      padding: 5px 15px;
+      border-radius: 6px;
+      background: #f8f9fa;
+    }
+    
+    .info-btn {
+      background: #007bff;
+      color: white;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      cursor: pointer;
+      border: none;
+      transition: all 0.3s;
+    }
+    
+    .info-btn:hover {
+      background: #0056b3;
+      transform: scale(1.1);
+    }
+    
+    canvas {
+      width: 100% !important;
+      height: 200px !important;
+      margin-top: 15px;
+      background: white;
+      border-radius: 6px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+    }
+    
+    /* Grafik modalı */
+    .chart-modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.8);
+      z-index: 1001;
+      justify-content: center;
+      align-items: center;
+    }
+    
+    .chart-modal-content {
+      background: white;
+      padding: 25px;
+      border-radius: 8px;
+      width: 80%;
+      max-width: 800px;
+      position: relative;
+    }
+    
+    .chart-modal-title {
+      font-size: 24px;
+      margin-bottom: 20px;
+      color: #2c3e50;
+    }
+    
+    .chart-modal-close {
+      position: absolute;
+      top: 15px;
+      right: 15px;
+      background: #e74c3c;
+      color: white;
+      border: none;
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      font-size: 16px;
+      cursor: pointer;
+    }
+    
+    .modal-chart-container {
+      width: 100%;
+      height: 400px;
+    }
+    
+    /* Konum modalı */
+    .location-coords {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 15px;
+      margin-top: 20px;
+      padding: 15px;
+      background: #f8f9fa;
+      border-radius: 8px;
+    }
+    
+    .location-coords div {
+      display: flex;
+      flex-direction: column;
+    }
+    
+    .location-coords span:first-child {
+      font-size: 14px;
+      color: #7f8c8d;
+      margin-bottom: 5px;
+    }
+    
+    .location-coords span:last-child {
+      font-weight: bold;
+      font-size: 16px;
+    }
+    
+    #map-container {
+      height: 400px;
+      width: 100%;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    
+    .leaflet-container {
+      background: #f8f9fa !important;
+    }
+    
+    /* Alarm seviyeleri */
+    .warning {
+      color: #ffc107 !important;
+      font-weight: bold;
+    }
+    
+    .danger {
+      color: #dc3545 !important;
+      animation: pulse 1.5s infinite;
+    }
+    
+    @keyframes pulse {
+      0% { opacity: 1; }
+      50% { opacity: 0.7; }
+      100% { opacity: 1; }
+    }
+    
+    /* Modal Stilleri */
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.5);
+      z-index: 1000;
+      justify-content: center;
+      align-items: center;
+    }
+    
+    .modal-content {
+      background: white;
+      padding: 25px;
+      border-radius: 8px;
+      max-width: 500px;
+      width: 90%;
+      position: relative;
+    }
+    
+    .close-btn {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      background: none;
+      border: none;
+      font-size: 20px;
+      cursor: pointer;
+    }
+    
+    @media (max-width: 1200px) {
+      .status-bar {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+      
+      .status-group {
+        width: 100%;
+        justify-content: space-between;
+      }
+      
+      .location-coords {
+        grid-template-columns: 1fr;
+      }
+    }
+    
+    @media (max-width: 768px) {
+      .dashboard {
+        flex-direction: column;
+      }
+      
+      .video-container,
+      .sensor-container {
+        flex: none;
+        height: 50%;
+      }
+      
+      .status-item {
+        min-width: 120px;
+      }
+      
+      .chart-modal-content {
+        width: 95%;
+        padding: 15px;
+      }
+      
+      .modal-chart-container,
+      #map-container {
+        height: 300px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Giriş Ekranı -->
+<div class="login-container" id="login-container">
+  <h2>Örümcek Kontrol Paneli</h2>
+  <input type="text" id="username" placeholder="Kullanıcı Adı" value="admin">
+  <input type="password" id="password" placeholder="Şifre" value="1234">
+  <button onclick="login()">Giriş Yap</button>
+</div>
+
+<!-- Ana İçerik -->
+<div class="content-container" id="content-container">
+  <div class="status-bar">
+    <div class="status-group">
+      <div class="status-item" onclick="showChartModal('Bağlantı Durumu', 'connection')">
+        <div class="status-icon" id="connection-icon"></div>
+        <span id="connection-status">Bağlantı</span>
+      </div>
+      <div class="status-item" onclick="showChartModal('Son Güncelleme', 'timestamp')">
+        <span>Son Güncelleme:</span>
+        <span class="status-value" id="last-update">--:--:--</span>
+      </div>
+    </div>
+    
+    <div class="status-group">
+      <div class="status-item" onclick="showLocationModal()">
+        <span>Konum:</span>
+        <span class="status-value" id="location-value">Belirleniyor...</span>
+      </div>
+      <div class="status-item" onclick="showChartModal('Yükseklik', 'altitude')">
+        <span>Yükseklik:</span>
+        <span class="status-value" id="altitude-value">0 m</span>
+      </div>
+    </div>
+    
+    <div class="status-group">
+      <div class="status-item" onclick="showChartModal('Sıcaklık', 'temperature')">
+        <span>Sıcaklık:</span>
+        <span class="status-value" id="temperature-value">0°C</span>
+      </div>
+      <div class="status-item" onclick="showChartModal('Basınç', 'pressure')">
+        <span>Basınç:</span>
+        <span class="status-value" id="pressure-value">0 hPa</span>
+      </div>
+      <div class="battery-status" onclick="showChartModal('Batarya', 'battery')">
+        <div class="battery-icon">
+          <div class="battery-level-icon" id="status-battery-level" style="width: 100%"></div>
+        </div>
+        <span class="status-value" id="battery-status-text">100%</span>
+      </div>
+    </div>
+  </div>
+  
+  <div class="dashboard">
+    <div class="video-container">
+      <video autoplay muted>
+        <source src="http://kumanda_ip_adresi:5000/video_feed_normal" type="multipart/x-mixed-replace">
+        Tarayıcınız video oynatmayı desteklemiyor.
+      </video>
+      <video autoplay muted>
+        <source src="http://kumanda_ip_adresi:5000/video_feed_thermal" type="multipart/x-mixed-replace">
+        Tarayıcınız video oynatmayı desteklemiyor.
+      </video>
+    </div>
+   
+    <div class="sensor-container">
+      <div class="sensor">
+        <div class="sensor-header">
+          <div class="sensor-title">Aseton
+            <button class="info-btn" onclick="showInfo('acetone')">i</button>
+          </div>
+          <div class="sensor-value" id="acetone-value">0.00 ppm</div>
+        </div>
+        <canvas id="acetoneChart"></canvas>
+      </div>
+      
+      <div class="sensor">
+        <div class="sensor-header">
+          <div class="sensor-title">Yanıcı Gaz
+            <button class="info-btn" onclick="showInfo('gas')">i</button>
+          </div>
+          <div class="sensor-value" id="gas-value">0.00 ppm</div>
+        </div>
+        <canvas id="gasChart"></canvas>
+      </div>
+
+      <div class="sensor">
+        <div class="sensor-header">
+          <div class="sensor-title">Karbondioksit
+            <button class="info-btn" onclick="showInfo('co2')">i</button>
+          </div>
+          <div class="sensor-value" id="co2-value">0 ppm</div>
+        </div>
+        <canvas id="co2Chart"></canvas>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Grafik Modalı -->
+<div id="chartModal" class="chart-modal">
+  <div class="chart-modal-content">
+    <button class="chart-modal-close" onclick="hideChartModal()">×</button>
+    <h2 class="chart-modal-title" id="chartModalTitle">Grafik</h2>
+    <div class="modal-chart-container">
+      <canvas id="modalChart"></canvas>
+    </div>
+  </div>
+</div>
+
+<!-- Konum Modalı -->
+<div id="locationModal" class="chart-modal">
+  <div class="chart-modal-content" style="max-width: 800px;">
+    <button class="chart-modal-close" onclick="hideLocationModal()">×</button>
+    <h2 class="chart-modal-title">Cihaz Konumu</h2>
+    <div id="map-container"></div>
+    <div class="location-coords">
+      <div><span>Enlem (X):</span> <span id="modal-latitude">0.0000°</span></div>
+      <div><span>Boylam (Y):</span> <span id="modal-longitude">0.0000°</span></div>
+      <div><span>Yükseklik:</span> <span id="modal-altitude">0 m</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- Bilgi Modalı -->
+<div id="infoModal" class="modal">
+  <div class="modal-content">
+    <button class="close-btn" onclick="hideInfo()">×</button>
+    <div id="modalContent"></div>
+  </div>
+</div>
+
+<script>
+  // Sensör bilgileri
+  const sensorInfo = {
+    acetone: {
+      title: "Aseton Sensörü",
+      content: `
+        <h3>Normal Seviye: 0-3 ppm</h3>
+        <p>3-6 ppm arası uyarı seviyesi, 6+ ppm tehlikeli</p>
+        <h3>Kaynaklar:</h3>
+        <p>Boya, tiner, kimyasal çözücüler</p>
+      `
+    },
+    gas: {
+      title: "Yanıcı Gaz Sensörü",
+      content: `
+        <h3>Normal Seviye: 0-4 ppm</h3>
+        <p>4-8 ppm arası uyarı, 8+ ppm patlama riski</p>
+        <h3>Önlemler:</h3>
+        <p>Açık alev ve kıvılcımdan uzak tutun</p>
+      `
+    },
+    co2: {
+      title: "CO₂ Sensörü",
+      content: `
+        <h3>Normal Seviye: 400-500 ppm</h3>
+        <p>500-800 ppm havalandırma gerekli, 800+ ppm tehlikeli</p>
+        <h3>Etkiler:</h3>
+        <p>Baş ağrısı, nefes darlığı, bilinç kaybı</p>
+      `
+    },
+    battery: {
+      title: "Batarya Durumu",
+      content: `
+        <h3>Pil Seviyesi</h3>
+        <p><strong>100-50%:</strong> Normal</p>
+        <p><strong>50-20%:</strong> Düşük - Şarj gerekiyor</p>
+        <p><strong>20% altı:</strong> Kritik - Hemen şarj edin</p>
+      `
+    },
+    gps: {
+      title: "GPS ve Çevresel Veriler",
+      content: `
+        <h3>Konum Bilgileri</h3>
+        <p><strong>Enlem/Boylam:</strong> Dünya üzerindeki konum</p>
+        <p><strong>Yükseklik:</strong> Deniz seviyesinden yükseklik (metre)</p>
+        
+        <h3>Çevresel Veriler</h3>
+        <p><strong>Sıcaklık:</strong> Ortam sıcaklığı (°C)</p>
+        <p><strong>Basınç:</strong> Atmosferik basınç (hPa)</p>
+      `
+    }
+  };
+
+  // Sensör eşik değerleri
+  const thresholds = {
+    acetone: { warning: 3, danger: 6 },
+    gas: { warning: 4, danger: 8 },
+    co2: { warning: 500, danger: 800 },
+    temperature: { warning: 40, danger: 50 }
+  };
+
+  // Grafikler ve veri depolama
+  const charts = {};
+  const sensorData = {
+    acetone: [],
+    gas: [],
+    co2: [],
+    temperature: [],
+    pressure: [],
+    altitude: [],
+    battery: [],
+    location: []
+  };
+
+  // Modal grafik
+  let modalChart = null;
+  let currentChartDataType = null;
+  let map = null;
+  let marker = null;
+
+  // Sayfa yüklendiğinde
+  document.addEventListener('DOMContentLoaded', () => {
+    initializeCharts();
+    loadLeaflet();
+  });
+
+  // Leaflet kütüphanesini yükle
+  function loadLeaflet() {
+    if (typeof L === 'undefined') {
+      const script = document.createElement('script');
+      script.src = 'https://unpkg.com/leaflet@1.7.1/dist/leaflet.js';
+      script.onload = initMap;
+      document.head.appendChild(script);
+    } else {
+      initMap();
+    }
+  }
+
+  // Haritayı başlat
+  function initMap() {
+    map = L.map('map-container').setView([39.925533, 32.866287], 15); // Varsayılan Ankara
+    
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+    }).addTo(map);
+    
+    marker = L.marker([39.925533, 32.866287]).addTo(map)
+      .bindPopup("Cihaz Konumu");
+  }
+
+  // Giriş işlemi
+  function login() {
+    const username = document.getElementById('username').value;
+    const password = document.getElementById('password').value;
+    
+    if(username === 'admin' && password === '1234') {
+      document.getElementById('login-container').style.display = 'none';
+      document.getElementById('content-container').style.display = 'block';
+      startDataFetching();
+    } else {
+      alert('Hatalı giriş! Varsayılan: admin/1234');
+    }
+  }
+
+  // Grafikleri oluştur
+  function initializeCharts() {
+    charts.acetone = createChart('acetoneChart', '#e74c3c');
+    charts.gas = createChart('gasChart', '#3498db');
+    charts.co2 = createChart('co2Chart', '#2ecc71');
+  }
+
+  // Grafik oluşturma fonksiyonu
+  function createChart(canvasId, color) {
+    const ctx = document.getElementById(canvasId).getContext('2d');
+    return new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: Array(10).fill(''),
+        datasets: [{
+          data: Array(10).fill(0),
+          borderColor: color,
+          backgroundColor: hexToRgba(color, 0.1),
+          borderWidth: 3,
+          tension: 0.4,
+          fill: true,
+          pointRadius: 0,
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        animation: {
+          duration: 400
+        },
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            enabled: true,
+            backgroundColor: 'rgba(0,0,0,0.8)',
+            titleColor: '#fff',
+            bodyColor: '#fff',
+            cornerRadius: 4,
+            displayColors: false,
+            padding: 10,
+            callbacks: {
+              label: function(context) {
+                return `${context.parsed.y.toFixed(2)} ${canvasId.includes('acetone') ? 'ppm' : canvasId.includes('gas') ? 'ppm' : 'ppm'}`;
+              },
+              title: function() {
+                return '';
+              }
+            }
+          }
+        },
+        scales: {
+          x: { display: false },
+          y: {
+            beginAtZero: true,
+            ticks: {
+              color: '#666',
+              font: { size: 12 }
+            },
+            grid: { color: 'rgba(0,0,0,0.05)' }
+          }
+        },
+        interaction: {
+          intersect: false,
+          mode: 'index'
+        }
+      }
+    });
+  }
+
+  function hexToRgba(hex, alpha) {
+    const r = parseInt(hex.slice(1, 3), 16);
+    const g = parseInt(hex.slice(3, 5), 16);
+    const b = parseInt(hex.slice(5, 7), 16);
+    return `rgba(${r},${g},${b},${alpha})`;
+  }
+
+  // Veri çekme fonksiyonu
+ 
+  // Tüm sensör verilerini kaydet
+  function saveAllSensorData(data) {
+    const now = new Date();
+    const timestamp = now.getTime();
+    
+    // Ana sensörler
+    saveDataPoint('acetone', data.acetone, timestamp);
+    saveDataPoint('gas', data.gas, timestamp);
+    saveDataPoint('co2', data.co2, timestamp);
+    saveDataPoint('battery', data.battery, timestamp);
+    
+    // GPS verileri
+    if (data.gps) {
+      saveDataPoint('temperature', data.gps.temperature, timestamp);
+      saveDataPoint('pressure', data.gps.pressure, timestamp);
+      saveDataPoint('altitude', data.gps.altitude, timestamp);
+      saveDataPoint('location', {
+        latitude: data.gps.latitude,
+        longitude: data.gps.longitude,
+        altitude: data.gps.altitude
+      }, timestamp);
+    }
+  }
+  
+  function saveDataPoint(sensorType, value, timestamp) {
+    if (sensorData[sensorType].length >= 20) {
+      sensorData[sensorType].shift();
+    }
+    sensorData[sensorType].push({ value, timestamp });
+  }
+
+  // GPS verilerini güncelle
+  function updateGPSData(gpsData) {
+    document.getElementById('location-value').textContent = `${gpsData.latitude.toFixed(2)}°, ${gpsData.longitude.toFixed(2)}°`;
+    document.getElementById('altitude-value').textContent = `${gpsData.altitude.toFixed(1)} m`;
+    
+    // Sıcaklık ve basınç
+    const tempElement = document.getElementById('temperature-value');
+    tempElement.textContent = `${gpsData.temperature.toFixed(1)}°C`;
+    
+    // Sıcaklık alarm kontrolü
+    tempElement.classList.remove('warning', 'danger');
+    if (gpsData.temperature >= thresholds.temperature.danger) {
+      tempElement.classList.add('danger');
+    } else if (gpsData.temperature >= thresholds.temperature.warning) {
+      tempElement.classList.add('warning');
+    }
+    
+    document.getElementById('pressure-value').textContent = `${gpsData.pressure.toFixed(1)} hPa`;
+  }
+
+  // Sensör değerlerini güncelle
+  function updateSensorDisplay(sensorType, value) {
+    const element = document.getElementById(`${sensorType}-value`);
+    const unit = sensorType === 'gas' ? ' ppm' : ' ppm';
+    
+    element.textContent = value.toFixed(sensorType === 'co2' ? 0 : 2) + unit;
+    
+    // Alarm kontrolü
+    element.classList.remove('warning', 'danger');
+    if (value >= thresholds[sensorType].danger) {
+      element.classList.add('danger');
+    } else if (value >= thresholds[sensorType].warning) {
+      element.classList.add('warning');
+    }
+  }
+
+  // Batarya seviyesini güncelle
+  function updateBattery(level) {
+    const batteryLevel = document.getElementById('status-battery-level');
+    const batteryText = document.getElementById('battery-status-text');
+    
+    batteryLevel.style.width = `${level}%`;
+    batteryText.textContent = `${level}%`;
+    
+    // Renk güncelleme
+    if (level < 20) {
+      batteryLevel.style.background = '#dc3545';
+    } else if (level < 50) {
+      batteryLevel.style.background = '#ffc107';
+    } else {
+      batteryLevel.style.background = '#28a745';
+    }
+  }
+
+  // Grafik güncelleme
+  function updateChart(sensorType, value) {
+    const valuesOnly = sensorData[sensorType].map(entry => entry.value || entry);
+
+    charts[sensorType].data.datasets[0].data = valuesOnly.slice(-10);
+    charts[sensorType].update();
+  }
+
+  // Bağlantı durumu
+  function updateConnectionStatus(isConnected) {
+    const status = document.getElementById('connection-status');
+    const icon = document.getElementById('connection-icon');
+    
+    if (isConnected) {
+      status.textContent = 'Bağlantı: Aktif';
+      icon.classList.add('status-connected');
+      icon.classList.remove('status-disconnected');
+    } else {
+      status.textContent = 'Bağlantı: Kesildi';
+      icon.classList.add('status-disconnected');
+      icon.classList.remove('status-connected');
+    }
+  }
+
+  // Zaman damgası
+  function updateTimestamp() {
+    const now = new Date();
+    document.getElementById('last-update').textContent = 
+      `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`;
+  }
+
+  // Grafik modalını göster
+  function showChartModal(title, dataType) {
+    const modal = document.getElementById('chartModal');
+    const modalTitle = document.getElementById('chartModalTitle');
+    const ctx = document.getElementById('modalChart').getContext('2d');
+    
+    modalTitle.textContent = `${title} - Geçmiş Veriler`;
+    currentChartDataType = dataType;
+    
+    // Eğer önceki bir grafik varsa yok et
+    if (modalChart) {
+      modalChart.destroy();
+    }
+    
+    // Verileri hazırla
+    const data = sensorData[dataType] || [];
+    const labels = data.map(item => {
+      const date = new Date(item.timestamp);
+      return `${date.getHours()}:${date.getMinutes()}:${date.getSeconds()}`;
+    });
+    const values = data.map(item => item.value);
+    
+    // Renk belirle
+    let color = '#3498db';
+    if (dataType === 'temperature') color = '#e74c3c';
+    else if (dataType === 'battery') color = '#2ecc71';
+    else if (dataType === 'altitude') color = '#9b59b6';
+    else if (dataType === 'pressure') color = '#f39c12';
+    
+    // Yeni grafik oluştur
+    modalChart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: labels,
+        datasets: [{
+          label: title,
+          data: values,
+          borderColor: color,
+          backgroundColor: `${color}20`,
+          borderWidth: 3,
+          tension: 0.3,
+          fill: true,
+          pointRadius: 2,
+          pointBackgroundColor: color,
+          pointBorderColor: '#fff',
+          pointBorderWidth: 2
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            display: true,
+            position: 'top',
+            labels: {
+              font: {
+                size: 14,
+                family: "'Segoe UI', Tahoma, sans-serif"
+              },
+              padding: 20,
+              usePointStyle: true
+            }
+          },
+          tooltip: {
+            backgroundColor: 'rgba(0,0,0,0.85)',
+            titleFont: {
+              size: 16,
+              weight: 'bold'
+            },
+            bodyFont: {
+              size: 14
+            },
+            padding: 12,
+            displayColors: false,
+            callbacks: {
+              label: function(context) {
+                let value = context.parsed.y;
+                let unit = getUnit(dataType);
+                
+                // Özel formatlama
+                if (dataType === 'temperature') {
+                  return `${value.toFixed(1)} ${unit}`;
+                } else if (dataType === 'battery') {
+                  return `${value.toFixed(0)} ${unit}`;
+                } else if (dataType === 'latitude' || dataType === 'longitude') {
+                  return `${value.toFixed(6)} ${unit}`;
+                } else {
+                  return `${value.toFixed(2)} ${unit}`;
+                }
+              },
+              afterLabel: function(context) {
+                // GPS verileri için ek bilgi
+                if (dataType === 'location') {
+                  const data = sensorData.location[context.dataIndex].value;
+                  return `Yükseklik: ${data.altitude.toFixed(1)} m`;
+                }
+                return '';
+              }
+            }
+          }
+        },
+        scales: {
+          y: {
+            beginAtZero: dataType !== 'latitude' && dataType !== 'longitude',
+            title: {
+              display: true,
+              text: getUnit(dataType),
+              font: {
+                size: 14,
+                weight: 'bold'
+              }
+            },
+            grid: {
+              color: 'rgba(0,0,0,0.05)',
+              drawBorder: false
+            },
+            ticks: {
+              font: {
+                size: 12
+              }
+            }
+          },
+          x: {
+            grid: {
+              display: false
+            },
+            ticks: {
+              font: {
+                size: 12
+              },
+              maxRotation: 45,
+              minRotation: 45,
+              callback: function(value, index, values) {
+                return index % 3 === 0 ? this.getLabelForValue(value) : '';
+              }
+            }
+          }
+        },
+        elements: {
+          line: {
+            borderWidth: 3
+          },
+          point: {
+            radius: 4,
+            hoverRadius: 6
+          }
+        },
+        interaction: {
+          intersect: false,
+          mode: 'index'
+        }
+      }
+    });
+    
+    modal.style.display = 'flex';
+  }
+  
+  // Konum modalını göster
+  function showLocationModal() {
+    const modal = document.getElementById('locationModal');
+    const lastData = sensorData.location.length > 0 ? sensorData.location[sensorData.location.length - 1].value : null;
+    
+    if (lastData) {
+      document.getElementById('modal-latitude').textContent = `${lastData.latitude.toFixed(4)}°`;
+      document.getElementById('modal-longitude').textContent = `${lastData.longitude.toFixed(4)}°`;
+      document.getElementById('modal-altitude').textContent = `${lastData.altitude.toFixed(1)} m`;
+      
+      // Haritayı güncelle
+      if (map && marker) {
+        map.setView([lastData.latitude, lastData.longitude], 15);
+        marker.setLatLng([lastData.latitude, lastData.longitude])
+          .bindPopup(`Cihaz Konumu<br>Enlem: ${lastData.latitude.toFixed(4)}°<br>Boylam: ${lastData.longitude.toFixed(4)}°`)
+          .openPopup();
+      }
+    }
+    
+    modal.style.display = 'flex';
+  }
+  
+  // Konum modalını gizle
+  function hideLocationModal() {
+    document.getElementById('locationModal').style.display = 'none';
+  }
+
+  // Grafik modalını gizle
+  function hideChartModal() {
+    document.getElementById('chartModal').style.display = 'none';
+  }
+
+  // Birim bilgisi
+  function getUnit(dataType) {
+    switch(dataType) {
+      case 'temperature': return '°C';
+      case 'pressure': return 'hPa';
+      case 'altitude': return 'metre';
+      case 'latitude': return 'Enlem (°)';
+      case 'longitude': return 'Boylam (°)';
+      case 'battery': return 'Yüzde (%)';
+      default: return 'Değer';
+    }
+  }
+
+  // Bilgi göster
+  function showInfo(sensorType) {
+    const modal = document.getElementById('infoModal');
+    const modalContent = document.getElementById('modalContent');
+    
+    modalContent.innerHTML = `
+      <h2>${sensorInfo[sensorType].title}</h2>
+      ${sensorInfo[sensorType].content}
+    `;
+    
+    modal.style.display = 'flex';
+  }
+
+  // Bilgi gizle
+  function hideInfo() {
+    document.getElementById('infoModal').style.display = 'none';
+  }
+
+  // Veri çekmeyi başlat
+function startDataFetching() {
+ const socket = new WebSocket("ws://10.105.106.62:8080");
+
+ // IP'yi Raspberry'nin IP'siyle değiştir
+
+  socket.onopen = () => {
+    console.log("🔌 WebSocket bağlantısı kuruldu!");
+    updateConnectionStatus(true);
+  };
+
+  socket.onclose = () => {
+    console.log("❌ WebSocket bağlantısı kapandı!");
+    updateConnectionStatus(false);
+  };
+
+  socket.onerror = (err) => {
+    console.error("⚠️ WebSocket hatası:", err);
+    updateConnectionStatus(false);
+  };
+
+  socket.onmessage = (event) => {
+    const data = JSON.parse(event.data);
+
+    // Ana sensörler
+    updateSensorDisplay('acetone', data.acetone);
+    updateSensorDisplay('gas', data.flammable);
+    updateSensorDisplay('co2', data.co2);
+    updateBattery(data.battery);
+
+    // GPS ve çevresel veriler
+    const fakeGPS = {
+      latitude: 39.925,
+      longitude: 32.866,
+      altitude: data.altitude,
+      temperature: data.temperature,
+      pressure: data.pressure
+    };
+    updateGPSData(fakeGPS);
+
+    // Kayıt ve grafik
+    const timestamp = new Date().getTime();
+    saveDataPoint('acetone', data.acetone, timestamp);
+    saveDataPoint('gas', data.flammable, timestamp);
+    saveDataPoint('co2', data.co2, timestamp);
+    saveDataPoint('battery', data.battery, timestamp);
+    saveDataPoint('temperature', data.temperature, timestamp);
+    saveDataPoint('pressure', data.pressure, timestamp);
+    saveDataPoint('altitude', data.altitude, timestamp);
+    saveDataPoint('location', {
+      latitude: fakeGPS.latitude,
+      longitude: fakeGPS.longitude,
+      altitude: data.altitude
+    }, timestamp);
+
+    updateChart('acetone', data.acetone);
+    updateChart('gas', data.flammable);
+    updateChart('co2', data.co2);
+
+    updateTimestamp();
+  };
+}
+
+</script>
+</body>
+</html>

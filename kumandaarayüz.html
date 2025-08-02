@@ -1,0 +1,884 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Drone Kumanda Sistemi</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #0f0f23 0%, #1a1a2e 100%);
+            color: #ffffff;
+            height: 100vh;
+            overflow: hidden;
+        }
+        
+        .container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            grid-template-rows: auto 1fr;
+            height: 100vh;
+            gap: 8px;
+            padding: 8px;
+        }
+        
+        .header {
+            grid-column: 1 / -1;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+            padding: 10px;
+            text-align: center;
+        }
+        
+        .camera-section {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 15px;
+            padding: 12px;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .camera-section::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, #00ff88, #00ccff);
+            animation: pulse 2s ease-in-out infinite alternate;
+        }
+        
+        .camera-title {
+            font-size: 14px;
+            font-weight: bold;
+            margin-bottom: 8px;
+            text-align: center;
+            color: #00ff88;
+        }
+        
+        .camera-feed {
+            flex: 1;
+            background: #000;
+            border-radius: 8px;
+            margin-bottom: 12px;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 2px solid rgba(0, 255, 136, 0.3);
+            overflow: hidden;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .camera-feed:hover {
+            border-color: rgba(0, 255, 136, 0.6);
+            box-shadow: 0 0 20px rgba(0, 255, 136, 0.3);
+        }
+        
+        .fullscreen-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.95);
+            z-index: 1000;
+            display: none;
+            backdrop-filter: blur(10px);
+        }
+        
+        .fullscreen-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+        }
+        
+        .fullscreen-camera {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: none;
+            overflow: hidden;
+        }
+        
+        .fullscreen-overlay-data {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(10px);
+            border-top: 2px solid rgba(0, 255, 136, 0.5);
+            padding: 12px;
+            display: grid;
+            grid-template-columns: 1fr 140px;
+            gap: 15px;
+            z-index: 10;
+            height: 160px;
+        }
+        
+        .fullscreen-data-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            grid-template-rows: repeat(3, 1fr);
+            gap: 8px;
+        }
+        
+        .fullscreen-radar-corner {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+        
+        .close-button {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            width: 40px;
+            height: 40px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            color: #fff;
+            font-size: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            z-index: 1001;
+            transition: all 0.3s ease;
+        }
+        
+        .close-button:hover {
+            background: rgba(255, 0, 0, 0.3);
+            border-color: #ff4444;
+        }
+        
+        .fullscreen-title {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 15px;
+            text-align: center;
+            color: #00ff88;
+            border-bottom: 2px solid rgba(0, 255, 136, 0.3);
+            padding-bottom: 10px;
+        }
+        
+        .fullscreen-sensors {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-bottom: 20px;
+        }
+        
+        .fullscreen-sensor-item {
+            background: rgba(0, 0, 0, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 4px;
+            padding: 6px;
+            text-align: center;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(5px);
+        }
+        
+        .fullscreen-sensor-item:hover {
+            background: rgba(255, 255, 255, 0.15);
+            transform: translateY(-1px);
+        }
+        
+        .fullscreen-sensor-label {
+            font-size: 9px;
+            color: #cccccc;
+            margin-bottom: 2px;
+        }
+        
+        .fullscreen-sensor-value {
+            font-size: 12px;
+            font-weight: bold;
+            color: #00ff88;
+        }
+        
+        .fullscreen-radar-container {
+            background: rgba(0, 0, 0, 0.6);
+            border: 2px solid rgba(0, 204, 255, 0.5);
+            border-radius: 10px;
+            padding: 8px;
+            height: 120px;
+            width: 120px;
+            position: relative;
+            overflow: hidden;
+            backdrop-filter: blur(5px);
+        }
+        
+        .fullscreen-radar {
+            width: 100px;
+            height: 100px;
+            border: 2px solid #00ccff;
+            border-radius: 50%;
+            position: relative;
+            margin: 0 auto;
+            background: radial-gradient(circle, rgba(0, 204, 255, 0.2) 0%, transparent 70%);
+        }
+        
+        .fullscreen-radar::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 2px;
+            height: 45px;
+            background: #00ccff;
+            transform-origin: bottom;
+            transform: translate(-50%, -100%) rotate(0deg);
+            animation: radar-sweep 3s linear infinite;
+        }
+        
+        .fullscreen-radar-grid {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 96px;
+            height: 96px;
+        }
+        
+        .fullscreen-radar-circle {
+            border: 1px solid rgba(0, 204, 255, 0.4);
+            border-radius: 50%;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+        
+        .fullscreen-radar-circle:nth-child(1) { width: 30px; height: 30px; }
+        .fullscreen-radar-circle:nth-child(2) { width: 60px; height: 60px; }
+        .fullscreen-radar-circle:nth-child(3) { width: 90px; height: 90px; }
+        
+        .fullscreen-distance-sensors {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 6px;
+            width: 100%;
+        }
+        
+        .fullscreen-distance-item {
+            background: rgba(0, 0, 0, 0.6);
+            border: 1px solid rgba(0, 204, 255, 0.4);
+            border-radius: 4px;
+            padding: 6px;
+            text-align: center;
+            backdrop-filter: blur(5px);
+        }
+        
+        .fullscreen-distance-label {
+            font-size: 9px;
+            color: #cccccc;
+            margin-bottom: 2px;
+        }
+        
+        .fullscreen-distance-value {
+            font-size: 12px;
+            font-weight: bold;
+            color: #00ccff;
+        }
+        
+        .overlay-section-title {
+            color: #00ff88;
+            font-size: 12px;
+            font-weight: bold;
+            text-align: center;
+            margin-bottom: 8px;
+            text-shadow: 0 0 10px rgba(0, 255, 136, 0.5);
+        }
+        
+        .camera-placeholder {
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 12px;
+            text-align: center;
+        }
+        
+        .sensors {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 6px;
+            margin-top: auto;
+        }
+        
+        .sensor-item {
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 6px;
+            padding: 6px;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+        
+        .sensor-item:hover {
+            background: rgba(255, 255, 255, 0.1);
+            transform: translateY(-2px);
+        }
+        
+        .sensor-label {
+            font-size: 10px;
+            color: #cccccc;
+            margin-bottom: 2px;
+        }
+        
+        .sensor-value {
+            font-size: 12px;
+            font-weight: bold;
+            color: #00ff88;
+        }
+        
+        .radar-container {
+            background: rgba(0, 0, 0, 0.6);
+            border-radius: 8px;
+            padding: 8px;
+            margin-bottom: 8px;
+            height: 120px;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .radar {
+            width: 100px;
+            height: 100px;
+            border: 2px solid #00ccff;
+            border-radius: 50%;
+            position: relative;
+            margin: 0 auto;
+            background: radial-gradient(circle, rgba(0, 204, 255, 0.1) 0%, transparent 70%);
+        }
+        
+        .radar::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 2px;
+            height: 45px;
+            background: #00ccff;
+            transform-origin: bottom;
+            transform: translate(-50%, -100%) rotate(0deg);
+            animation: radar-sweep 3s linear infinite;
+        }
+        
+        .radar-grid {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 96px;
+            height: 96px;
+        }
+        
+        .radar-circle {
+            border: 1px solid rgba(0, 204, 255, 0.3);
+            border-radius: 50%;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+        
+        .radar-circle:nth-child(1) { width: 30px; height: 30px; }
+        .radar-circle:nth-child(2) { width: 60px; height: 60px; }
+        .radar-circle:nth-child(3) { width: 90px; height: 90px; }
+        
+        .distance-sensors {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 4px;
+        }
+        
+        .distance-item {
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px solid rgba(0, 204, 255, 0.3);
+            border-radius: 4px;
+            padding: 4px;
+            text-align: center;
+        }
+        
+        .distance-label {
+            font-size: 9px;
+            color: #cccccc;
+        }
+        
+        .distance-value {
+            font-size: 11px;
+            font-weight: bold;
+            color: #00ccff;
+        }
+        
+        .status-indicators {
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+        }
+        
+        .status-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            animation: blink 2s ease-in-out infinite;
+        }
+        
+        .status-online { background: #00ff88; }
+        .status-warning { background: #ffaa00; }
+        .status-error { background: #ff4444; }
+        
+        .thermal-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(45deg, 
+                rgba(255, 0, 0, 0.1) 0%, 
+                rgba(255, 255, 0, 0.1) 50%, 
+                rgba(0, 255, 0, 0.1) 100%);
+            pointer-events: none;
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 0.6; }
+            100% { opacity: 1; }
+        }
+        
+        @keyframes radar-sweep {
+            0% { transform: translate(-50%, -100%) rotate(0deg); }
+            100% { transform: translate(-50%, -100%) rotate(360deg); }
+        }
+        
+        @keyframes blink {
+            0%, 50% { opacity: 1; }
+            51%, 100% { opacity: 0.3; }
+        }
+        
+        .battery-low { color: #ff4444 !important; }
+        .temperature-high { color: #ff4444 !important; }
+        .gas-detected { color: #ffaa00 !important; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+    <div class="status-indicators">
+        <div class="status-item">
+            <div class="status-dot status-error" id="systemStatus"></div>
+            <span style="font-size: 12px;" id="systemText">SİSTEM KAPALI</span>
+        </div>
+        <div class="status-item">
+            <div class="status-dot status-error" id="connectionStatus"></div>
+            <span style="font-size: 12px;" id="connectionText">BAĞLANTI YOK</span>
+        </div>
+        <div class="status-item">
+            <div class="status-dot status-error" id="dataStatus"></div>
+            <span style="font-size: 12px;" id="dataText">VERİ YOK</span>
+        </div>
+    </div>
+</div>        
+        <div class="camera-section">
+            <div class="camera-title">KAMERA 1 - NORMAL</div>
+            <div class="camera-feed" onclick="openFullscreen('camera1')">
+                <div class="camera-placeholder">
+                    📹<br>
+                    NORMAL KAMERA<br>
+                    1920x1080<br>
+                    <small style="color: #888;">Tam ekran için tıkla</small>
+                </div>
+            </div>
+            <div class="sensors">
+                <div class="sensor-item">
+                    <div class="sensor-label">ASETON</div>
+                    <div class="sensor-value" id="acetone">45 ppm</div>
+                </div>
+                <div class="sensor-item">
+                    <div class="sensor-label">YANICI GAZ</div>
+                    <div class="sensor-value gas-detected" id="flammable">12 ppm</div>
+                </div>
+                <div class="sensor-item">
+                    <div class="sensor-label">CO₂</div>
+                    <div class="sensor-value" id="co2">410 ppm</div>
+                </div>
+                <div class="sensor-item">
+                    <div class="sensor-label">YÜKSEKLİK</div>
+                    <div class="sensor-value" id="altitude">245 m</div>
+                </div>
+                <div class="sensor-item">
+                    <div class="sensor-label">SICAKLIK</div>
+                    <div class="sensor-value temperature-high" id="temperature">68°C</div>
+                </div>
+                <div class="sensor-item">
+                    <div class="sensor-label">BASINÇ</div>
+                    <div class="sensor-value" id="pressure">1013 hPa</div>
+                </div>
+                <div class="sensor-item" style="grid-column: 1 / -1;">
+                    <div class="sensor-label">PİL DURUMU</div>
+                    <div class="sensor-value battery-low" id="battery">23%</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="camera-section">
+            <div class="camera-title">KAMERA 2 - THERMAL</div>
+            <div class="camera-feed" onclick="openFullscreen('camera2')">
+                <div class="thermal-overlay"></div>
+                <div class="camera-placeholder">
+                    🌡️<br>
+                    THERMAL KAMERA<br>
+                    640x480<br>
+                    <small style="color: #888;">Tam ekran için tıkla</small>
+                </div>
+            </div>
+            
+            <div class="radar-container">
+                <div class="radar">
+                    <div class="radar-grid">
+                        <div class="radar-circle"></div>
+                        <div class="radar-circle"></div>
+                        <div class="radar-circle"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="distance-sensors">
+                <div class="distance-item">
+                    <div class="distance-label">ÖN</div>
+                    <div class="distance-value" id="front">2.3m</div>
+                </div>
+                <div class="distance-item">
+                    <div class="distance-label">ARKA</div>
+                    <div class="distance-value" id="back">5.7m</div>
+                </div>
+                <div class="distance-item">
+                    <div class="distance-label">SOL</div>
+                    <div class="distance-value" id="left">1.8m</div>
+                </div>
+                <div class="distance-item">
+                    <div class="distance-label">SAĞ</div>
+                    <div class="distance-value" id="right">3.2m</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Fullscreen Overlay -->
+    <div class="fullscreen-overlay" id="fullscreenOverlay">
+        <div class="close-button" onclick="closeFullscreen()">✕</div>
+        <div class="fullscreen-container" id="fullscreenContainer">
+            <!-- Content will be dynamically inserted here -->
+        </div>
+    </div>
+
+    <script>
+        // Fullscreen functionality
+        function openFullscreen(cameraType) {
+            const overlay = document.getElementById('fullscreenOverlay');
+            const container = document.getElementById('fullscreenContainer');
+            
+            const cameraContent = cameraType === 'camera1' ? 
+                `<div class="camera-placeholder" style="font-size: 32px;">
+                    📹<br>
+                    NORMAL KAMERA - TAM EKRAN<br>
+                    1920x1080<br>
+                    <small style="color: #888; font-size: 18px;">Tam Ekran Görüntü</small>
+                </div>` :
+                `<div class="thermal-overlay"></div>
+                <div class="camera-placeholder" style="font-size: 32px;">
+                    🌡️<br>
+                    THERMAL KAMERA - TAM EKRAN<br>
+                    640x480<br>
+                    <small style="color: #888; font-size: 18px;">Tam Ekran Görüntü</small>
+                </div>`;
+            
+            container.innerHTML = `
+                <div class="fullscreen-camera">
+                    ${cameraContent}
+                </div>
+                
+                <div class="fullscreen-overlay-data">
+                    <!-- Data Grid - All sensors and distance data -->
+                    <div class="fullscreen-data-grid">
+                        <!-- Row 1: Gas sensors -->
+                        <div class="fullscreen-sensor-item">
+                            <div class="fullscreen-sensor-label">ASETON</div>
+                            <div class="fullscreen-sensor-value" id="fs-acetone">45 ppm</div>
+                        </div>
+                        <div class="fullscreen-sensor-item">
+                            <div class="fullscreen-sensor-label">YANICI GAZ</div>
+                            <div class="fullscreen-sensor-value" id="fs-flammable">12 ppm</div>
+                        </div>
+                        <div class="fullscreen-sensor-item">
+                            <div class="fullscreen-sensor-label">CO₂</div>
+                            <div class="fullscreen-sensor-value" id="fs-co2">410 ppm</div>
+                        </div>
+                        <div class="fullscreen-sensor-item">
+                            <div class="fullscreen-sensor-label">YÜKSEKLİK</div>
+                            <div class="fullscreen-sensor-value" id="fs-altitude">245 m</div>
+                        </div>
+                        
+                        <!-- Row 2: Environmental sensors -->
+                        <div class="fullscreen-sensor-item">
+                            <div class="fullscreen-sensor-label">SICAKLIK</div>
+                            <div class="fullscreen-sensor-value" id="fs-temperature">68°C</div>
+                        </div>
+                        <div class="fullscreen-sensor-item">
+                            <div class="fullscreen-sensor-label">BASINÇ</div>
+                            <div class="fullscreen-sensor-value" id="fs-pressure">1013 hPa</div>
+                        </div>
+                        <div class="fullscreen-sensor-item">
+                            <div class="fullscreen-sensor-label">PİL DURUMU</div>
+                            <div class="fullscreen-sensor-value" id="fs-battery">23%</div>
+                        </div>
+                        <div class="fullscreen-sensor-item">
+                            <div class="fullscreen-sensor-label">ÖN</div>
+                            <div class="fullscreen-sensor-value" id="fs-front">2.3m</div>
+                        </div>
+                        
+                        <!-- Row 3: Distance sensors -->
+                        <div class="fullscreen-sensor-item">
+                            <div class="fullscreen-sensor-label">ARKA</div>
+                            <div class="fullscreen-sensor-value" id="fs-back">5.7m</div>
+                        </div>
+                        <div class="fullscreen-sensor-item">
+                            <div class="fullscreen-sensor-label">SOL</div>
+                            <div class="fullscreen-sensor-value" id="fs-left">1.8m</div>
+                        </div>
+                        <div class="fullscreen-sensor-item">
+                            <div class="fullscreen-sensor-label">SAĞ</div>
+                            <div class="fullscreen-sensor-value" id="fs-right">3.2m</div>
+                        </div>
+                        <div class="fullscreen-sensor-item" style="background: rgba(0, 255, 136, 0.1); border-color: rgba(0, 255, 136, 0.5);">
+                            <div class="fullscreen-sensor-label">DURUM</div>
+                            <div class="fullscreen-sensor-value" style="font-size: 10px;">AKTIF</div>
+                        </div>
+                    </div>
+                    
+                    <!-- Radar Corner -->
+                    <div class="fullscreen-radar-corner">
+                        <div class="fullscreen-radar-container">
+                            <div class="fullscreen-radar">
+                                <div class="fullscreen-radar-grid">
+                                    <div class="fullscreen-radar-circle"></div>
+                                    <div class="fullscreen-radar-circle"></div>
+                                    <div class="fullscreen-radar-circle"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div style="color: #00ccff; font-size: 10px; margin-top: 4px; text-shadow: 0 0 5px rgba(0, 204, 255, 0.5);">RADAR</div>
+                    </div>
+                </div>
+            `;
+            
+            overlay.style.display = 'block';
+            updateFullscreenData();
+        }
+        
+        function closeFullscreen() {
+            document.getElementById('fullscreenOverlay').style.display = 'none';
+        }
+        
+        function updateFullscreenData() {
+            // Update fullscreen sensor data
+            const fsAcetone = document.getElementById('fs-acetone');
+            const fsFlamm = document.getElementById('fs-flammable');
+            const fsCo2 = document.getElementById('fs-co2');
+            const fsAlt = document.getElementById('fs-altitude');
+            const fsTemp = document.getElementById('fs-temperature');
+            const fsPress = document.getElementById('fs-pressure');
+            const fsBatt = document.getElementById('fs-battery');
+            
+            if (fsAcetone) fsAcetone.textContent = document.getElementById('acetone').textContent;
+            if (fsFlamm) fsFlamm.textContent = document.getElementById('flammable').textContent;
+            if (fsCo2) fsCo2.textContent = document.getElementById('co2').textContent;
+            if (fsAlt) fsAlt.textContent = document.getElementById('altitude').textContent;
+            if (fsTemp) fsTemp.textContent = document.getElementById('temperature').textContent;
+            if (fsPress) fsPress.textContent = document.getElementById('pressure').textContent;
+            if (fsBatt) fsBatt.textContent = document.getElementById('battery').textContent;
+            
+            // Update fullscreen distance data
+            const fsFront = document.getElementById('fs-front');
+            const fsBack = document.getElementById('fs-back');
+            const fsLeft = document.getElementById('fs-left');
+            const fsRight = document.getElementById('fs-right');
+            
+            if (fsFront) fsFront.textContent = document.getElementById('front').textContent;
+            if (fsBack) fsBack.textContent = document.getElementById('back').textContent;
+            if (fsLeft) fsLeft.textContent = document.getElementById('left').textContent;
+            if (fsRight) fsRight.textContent = document.getElementById('right').textContent;
+        }
+        
+        // Close fullscreen with Escape key
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Escape') {
+                closeFullscreen();
+            }
+        });
+
+        // WebSocket bağlantısı
+let socket;
+
+function connectToController() {
+    updateConnectionStatus('connecting');
+    
+    try {
+        socket = new WebSocket('ws://localhost:8080');
+        
+        socket.onopen = function(event) {
+            console.log('Kumandaya bağlandı');
+            updateConnectionStatus('online');
+        };
+    } catch (error) {
+        console.log('Bağlantı hatası:', error);
+        updateConnectionStatus('error');
+    }
+    
+    socket.onmessage = function(event) {
+        const sensorData = JSON.parse(event.data);
+        updateRealSensorData(sensorData);
+    };
+    
+    socket.onclose = function(event) {
+        console.log('Bağlantı koptu, yeniden bağlanmaya çalışıyor...');
+        updateConnectionStatus('offline');
+        setTimeout(connectToController, 3000);
+    };
+    
+    socket.onerror = function(error) {
+        console.log('WebSocket hatası:', error);
+        updateConnectionStatus('error');
+    };
+}
+
+function updateRealSensorData(data) {
+    // Gerçek sensör verilerini güncelle
+    document.getElementById('acetone').textContent = data.acetone + ' ppm';
+    document.getElementById('flammable').textContent = data.flammable + ' ppm';
+    document.getElementById('co2').textContent = data.co2 + ' ppm';
+    document.getElementById('temperature').textContent = data.temperature + '°C';
+    document.getElementById('pressure').textContent = data.pressure + ' hPa';
+    document.getElementById('battery').textContent = data.battery + '%';
+    document.getElementById('altitude').textContent = data.altitude + ' m';
+    
+    // Mesafe sensörleri
+    document.getElementById('front').textContent = data.distances.front + 'm';
+    document.getElementById('back').textContent = data.distances.back + 'm';
+    document.getElementById('left').textContent = data.distances.left + 'm';
+    document.getElementById('right').textContent = data.distances.right + 'm';
+    
+    // Tam ekran verileri de güncelle
+    updateFullscreenData();
+    
+    // Uyarı kontrolü
+    checkWarnings(data);
+}
+
+function updateConnectionStatus(status) {
+    const systemDot = document.getElementById('systemStatus');
+    const systemText = document.getElementById('systemText');
+    const connectionDot = document.getElementById('connectionStatus');
+    const connectionText = document.getElementById('connectionText');
+    const dataDot = document.getElementById('dataStatus');
+    const dataText = document.getElementById('dataText');
+    
+    if (status === 'online') {
+        // Sistem aktif
+        systemDot.className = 'status-dot status-online';
+        systemText.textContent = 'SİSTEM AKTİF';
+        
+        // Bağlantı var
+        connectionDot.className = 'status-dot status-online';
+        connectionText.textContent = 'BAĞLANTI TAMAM';
+        
+        // Veri geliyor
+        dataDot.className = 'status-dot status-online';
+        dataText.textContent = 'VERİ GELİYOR';
+        
+    } else if (status === 'error') {
+        // Sistem kapalı
+        systemDot.className = 'status-dot status-error';
+        systemText.textContent = 'SİSTEM KAPALI';
+        
+        // Bağlantı yok
+        connectionDot.className = 'status-dot status-error';
+        connectionText.textContent = 'BAĞLANTI YOK';
+        
+        // Veri yok
+        dataDot.className = 'status-dot status-error';
+        dataText.textContent = 'VERİ YOK';
+        
+    } else if (status === 'connecting') {
+        // Bağlanmaya çalışıyor
+        systemDot.className = 'status-dot status-warning';
+        systemText.textContent = 'BAĞLANIYOR...';
+        
+        connectionDot.className = 'status-dot status-warning';
+        connectionText.textContent = 'BAĞLANIYOR';
+        
+        dataDot.className = 'status-dot status-error';
+        dataText.textContent = 'VERİ BEKLİYOR';
+    }
+}
+
+function checkWarnings(data) {
+    // Kritik değerleri kontrol et
+    const batteryElement = document.getElementById('battery');
+    const tempElement = document.getElementById('temperature');
+    const flammableElement = document.getElementById('flammable');
+    
+    // Pil uyarısı
+    if (data.battery < 20) {
+        batteryElement.classList.add('battery-low');
+    } else {
+        batteryElement.classList.remove('battery-low');
+    }
+    
+    // Sıcaklık uyarısı
+    if (data.temperature > 75) {
+        tempElement.classList.add('temperature-high');
+    } else {
+        tempElement.classList.remove('temperature-high');
+    }
+    
+    // Gaz uyarısı
+    if (data.flammable > 30) {
+        flammableElement.classList.add('gas-detected');
+    } else {
+        flammableElement.classList.remove('gas-detected');
+    }
+}
+
+// Bağlantıyı başlat
+connectToController();
+            </script>
+</body>
+</html>
